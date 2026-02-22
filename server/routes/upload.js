@@ -3,7 +3,7 @@ const router = express.Router();
 const { uploadImage, uploadProject } = require('../middleware/upload');
 const { protect, isSeller } = require('../middleware/auth');
 
-// @desc    Upload thumbnail image
+// @desc    Upload thumbnail image (to Cloudinary)
 // @route   POST /api/upload/image
 // @access  Private (Seller)
 router.post('/image', protect, isSeller, uploadImage.single('image'), (req, res) => {
@@ -12,11 +12,10 @@ router.post('/image', protect, isSeller, uploadImage.single('image'), (req, res)
             return res.status(400).json({ message: 'No file uploaded' });
         }
 
-        // Return the URL to access the uploaded file
-        const fileUrl = `/uploads/images/${req.file.filename}`;
+        // Cloudinary returns the URL in req.file.path
         res.json({
             message: 'Image uploaded successfully',
-            url: fileUrl,
+            url: req.file.path,
             filename: req.file.filename
         });
     } catch (error) {
