@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { HiStar, HiEye, HiDownload, HiHeart, HiOutlineHeart } from 'react-icons/hi';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
+import { resolveImageUrl } from '../utils/imageUrl';
 
 const ProjectCard = ({ project }) => {
     const { addToCart, isInCart } = useCart();
@@ -34,7 +35,7 @@ const ProjectCard = ({ project }) => {
                 {/* Thumbnail */}
                 <div className="relative h-48 overflow-hidden">
                     <img
-                        src={project.thumbnail || 'https://via.placeholder.com/400x200?text=Project'}
+                        src={resolveImageUrl(project.thumbnail)}
                         alt={project.title}
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                     />
@@ -54,8 +55,8 @@ const ProjectCard = ({ project }) => {
                         }}
                         aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
                         className={`absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 ${wishlisted
-                                ? 'bg-red-500 text-white shadow-lg shadow-red-500/30 scale-110'
-                                : 'bg-white/80 text-gray-600 hover:bg-white hover:text-red-500 backdrop-blur-sm'
+                            ? 'bg-red-500 text-white shadow-lg shadow-red-500/30 scale-110'
+                            : 'bg-white/80 text-gray-600 hover:bg-white hover:text-red-500 backdrop-blur-sm'
                             }`}
                     >
                         {wishlisted ? (

@@ -7,6 +7,7 @@ import Button from '../components/Button';
 import StarRating from '../components/StarRating';
 import Loading from '../components/Loading';
 import ProjectCard from '../components/ProjectCard';
+import { resolveImageUrl } from '../utils/imageUrl';
 import toast from 'react-hot-toast';
 import {
     HiShoppingCart,
@@ -161,8 +162,8 @@ const ProjectDetail = () => {
     };
 
     const images = project.images?.length > 0
-        ? project.images
-        : [project.thumbnail || 'https://via.placeholder.com/800x400?text=Project'];
+        ? project.images.map(img => resolveImageUrl(img))
+        : [resolveImageUrl(project.thumbnail)];
 
     return (
         <div className="min-h-screen py-8">

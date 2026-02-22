@@ -5,6 +5,7 @@ import { ordersAPI, projectsAPI, authAPI, bankingAPI, promoCodesAPI } from '../s
 import Button from '../components/Button';
 import Loading from '../components/Loading';
 import toast from 'react-hot-toast';
+import { resolveImageUrl } from '../utils/imageUrl';
 import {
     HiCurrencyDollar,
     HiShoppingCart,
@@ -291,7 +292,7 @@ const Dashboard = () => {
                                     {stats.recentSales.map((sale) => (
                                         <div key={sale._id} className="flex items-center gap-4 p-3 rounded-lg bg-gray-50">
                                             <img
-                                                src={sale.project?.thumbnail || 'https://via.placeholder.com/60'}
+                                                src={resolveImageUrl(sale.project?.thumbnail)}
                                                 alt={sale.project?.title}
                                                 className="w-12 h-12 rounded-lg object-cover"
                                             />
@@ -316,7 +317,7 @@ const Dashboard = () => {
                                     {stats.recentPurchases.map((purchase) => (
                                         <div key={purchase._id} className="flex items-center gap-4 p-3 rounded-lg bg-gray-50">
                                             <img
-                                                src={purchase.project?.thumbnail || 'https://via.placeholder.com/60'}
+                                                src={resolveImageUrl(purchase.project?.thumbnail)}
                                                 alt={purchase.project?.title}
                                                 className="w-12 h-12 rounded-lg object-cover"
                                             />
@@ -366,7 +367,7 @@ const Dashboard = () => {
                                                 <td className="py-4 px-4">
                                                     <div className="flex items-center gap-3">
                                                         <img
-                                                            src={project.thumbnail || 'https://via.placeholder.com/48'}
+                                                            src={resolveImageUrl(project.thumbnail)}
                                                             alt={project.title}
                                                             className="w-12 h-12 rounded-lg object-cover"
                                                         />
@@ -430,7 +431,7 @@ const Dashboard = () => {
                                 {purchases.map((order) => (
                                     <div key={order._id} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
                                         <img
-                                            src={order.project?.thumbnail || 'https://via.placeholder.com/200'}
+                                            src={resolveImageUrl(order.project?.thumbnail)}
                                             alt={order.project?.title}
                                             className="w-full h-32 object-cover rounded-lg mb-4"
                                         />
