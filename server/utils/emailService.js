@@ -1,18 +1,8 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-const createTransporter = () => {
-    return nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS
-        }
-    });
-};
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const sendOTPEmail = async (email, otp, purpose = 'login') => {
-    const transporter = createTransporter();
-
     const subject = purpose === 'register'
         ? 'Verify Your Email — Student Project Marketplace'
         : purpose === 'reset-password'
@@ -60,14 +50,12 @@ const sendOTPEmail = async (email, otp, purpose = 'login') => {
     </div>
     `;
 
-    const mailOptions = {
-        from: `"Student Project Marketplace" <${process.env.SMTP_USER}>`,
+    await resend.emails.send({
+        from: process.env.RESEND_FROM_EMAIL || 'Student Project Marketplace <onboarding@resend.dev>',
         to: email,
         subject,
         html: htmlContent
-    };
-
-    await transporter.sendMail(mailOptions);
+    });
 };
 
 // Generate a random 6-digit OTP
