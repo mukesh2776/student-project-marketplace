@@ -9,8 +9,7 @@ const uploadToCloudinary = (buffer, options = {}) => {
         const stream = cloudinary.uploader.upload_stream(
             {
                 folder: 'student-marketplace/images',
-                allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
-                transformation: [{ width: 800, height: 600, crop: 'limit', quality: 'auto' }],
+                resource_type: 'image',
                 ...options
             },
             (error, result) => {
