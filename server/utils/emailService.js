@@ -1,6 +1,15 @@
-const { Resend } = require('resend');
+const nodemailer = require('nodemailer');
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Create reusable transporter using Gmail SMTP
+const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.SMTP_PORT) || 587,
+    secure: false,
+    auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+    },
+});
 
 const sendOTPEmail = async (email, otp, purpose = 'login') => {
     const subject = purpose === 'register'
@@ -50,11 +59,11 @@ const sendOTPEmail = async (email, otp, purpose = 'login') => {
     </div>
     `;
 
-    await resend.emails.send({
-        from: process.env.RESEND_FROM_EMAIL || 'Student Project Marketplace <onboarding@resend.dev>',
+    await transporter.sendMail({
+        from: `"Student Project Marketplace" <${process.env.SMTP_USER}>`,
         to: email,
         subject,
-        html: htmlContent
+        html: htmlContent,
     });
 };
 
