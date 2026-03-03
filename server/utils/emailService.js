@@ -1,4 +1,13 @@
 const nodemailer = require('nodemailer');
+const dns = require('dns');
+
+// Custom DNS lookup that forces IPv4 resolution
+const forcedIPv4Lookup = (hostname, options, callback) => {
+    dns.resolve4(hostname, (err, addresses) => {
+        if (err) return callback(err);
+        callback(null, addresses[0], 4);
+    });
+};
 
 // Create reusable transporter using Gmail SMTP
 const createTransporter = () => {
@@ -12,10 +21,11 @@ const createTransporter = () => {
         },
         // Force IPv4 — Render cannot reach Gmail SMTP over IPv6
         family: 4,
+        dnsLookup: forcedIPv4Lookup,
         // Add timeouts to prevent hanging
-        connectionTimeout: 10000, // 10 seconds to establish connection
-        greetingTimeout: 10000,   // 10 seconds for greeting
-        socketTimeout: 15000,     // 15 seconds for socket inactivity
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 15000,
     });
 };
 
