@@ -10,6 +10,8 @@ const createTransporter = () => {
             user: process.env.SMTP_USER,
             pass: process.env.SMTP_PASS,
         },
+        // Force IPv4 — Render cannot reach Gmail SMTP over IPv6
+        family: 4,
         // Add timeouts to prevent hanging
         connectionTimeout: 10000, // 10 seconds to establish connection
         greetingTimeout: 10000,   // 10 seconds for greeting
