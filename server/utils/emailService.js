@@ -1,17 +1,36 @@
 const nodemailer = require('nodemailer');
 
 // Create reusable transporter using Gmail SMTP
-const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.SMTP_PORT) || 587,
-    secure: false,
-    auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-    },
-});
+const createTransporter = () => {
+    return nodemailer.createTransport({
+        host: process.env.SMTP_HOST || 'smtp.gmail.com',
+        port: parseInt(process.env.SMTP_PORT) || 587,
+        secure: false,
+        auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS,
+        },
+        // Add timeouts to prevent hanging
+        connectionTimeout: 10000, // 10 seconds to establish connection
+        greetingTimeout: 10000,   // 10 seconds for greeting
+        socketTimeout: 15000,     // 15 seconds for socket inactivity
+    });
+};
+
+const transporter = createTransporter();
+
+// Verify SMTP connection on startup
+transporter.verify()
+    .then(() => console.log('✅ SMTP connection verified successfully'))
+    .catch((err) => console.error('❌ SMTP connection failed:', err.message));
 
 const sendOTPEmail = async (email, otp, purpose = 'login') => {
+    // Check if SMTP credentials are configured
+    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+        console.error('❌ SMTP_USER or SMTP_PASS not configured');
+        throw new Error('Email service is not configured. Please contact support.');
+    }
+
     const subject = purpose === 'register'
         ? 'Verify Your Email — Student Project Marketplace'
         : purpose === 'reset-password'
@@ -59,12 +78,18 @@ const sendOTPEmail = async (email, otp, purpose = 'login') => {
     </div>
     `;
 
-    await transporter.sendMail({
-        from: `"Student Project Marketplace" <${process.env.SMTP_USER}>`,
-        to: email,
-        subject,
-        html: htmlContent,
-    });
+    try {
+        await transporter.sendMail({
+            from: `"Student Project Marketplace" <${process.env.SMTP_USER}>`,
+            to: email,
+            subject,
+            html: htmlContent,
+        });
+        console.log(`✅ OTP email sent to ${email} for ${purpose}`);
+    } catch (error) {
+        console.error(`❌ Failed to send OTP email to ${email}:`, error.message);
+        throw new Error('Failed to send verification email. Please try again later.');
+    }
 };
 
 // Generate a random 6-digit OTP
