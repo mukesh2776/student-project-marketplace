@@ -24,10 +24,11 @@ const Login = () => {
     });
     const [errors, setErrors] = useState({});
 
-    if (isAuthenticated) {
-        navigate(user?.role === 'admin' ? '/admin' : '/dashboard');
-        return null;
-    }
+    useEffect(() => {
+        if (isAuthenticated) {
+            navigate(user?.role === 'admin' ? '/admin' : '/dashboard');
+        }
+    }, [isAuthenticated, navigate, user]);
 
     useEffect(() => {
         if (resendTimer > 0) {
@@ -35,6 +36,10 @@ const Login = () => {
             return () => clearTimeout(timer);
         }
     }, [resendTimer]);
+
+    if (isAuthenticated) {
+        return null;
+    }
 
     const handleChange = (e) => {
         const { name, value } = e.target;

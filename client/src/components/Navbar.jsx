@@ -101,11 +101,11 @@ const Navbar = () => {
                                         className="flex items-center gap-2 p-2 rounded-xl hover:bg-gray-100 transition-colors"
                                     >
                                         <div className="w-8 h-8 rounded-full bg-gradient-primary flex items-center justify-center">
-                                            {user?.avatar ? (
+                                            {user?.avatar && user.avatar.startsWith('http') ? (
                                                 <img src={user.avatar} alt={user.name} className="w-full h-full rounded-full object-cover" />
                                             ) : (
                                                 <span className="text-white font-semibold text-sm">
-                                                    {user?.name?.charAt(0).toUpperCase()}
+                                                    {(user?.name || 'M').charAt(0).toUpperCase()}
                                                 </span>
                                             )}
                                         </div>
