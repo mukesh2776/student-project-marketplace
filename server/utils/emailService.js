@@ -1,40 +1,64 @@
 const nodemailer = require('nodemailer');
 const dns = require('dns');
 
-// Custom DNS lookup that forces IPv4 resolution
-const forcedIPv4Lookup = (hostname, options, callback) => {
-    dns.resolve4(hostname, (err, addresses) => {
-        if (err) return callback(err);
-        callback(null, addresses[0], 4);
+// Resolve SMTP hostname to an IPv4 address (required for Render's IPv6-first networking)
+const resolveHostToIPv4 = (hostname) => {
+    return new Promise((resolve, reject) => {
+        dns.resolve4(hostname, (err, addresses) => {
+            if (err) {
+                console.warn(`⚠️ IPv4 DNS resolution failed for ${hostname}, falling back to hostname:`, err.message);
+                resolve(hostname); // Fallback to hostname (works on localhost)
+            } else {
+                console.log(`✅ Resolved ${hostname} → ${addresses[0]} (IPv4)`);
+                resolve(addresses[0]);
+            }
+        });
     });
 };
 
-// Create reusable transporter using Gmail SMTP
-const createTransporter = () => {
-    return nodemailer.createTransport({
-        host: process.env.SMTP_HOST || 'smtp.gmail.com',
+// Lazy-initialized transporter (created on first email send)
+let transporter = null;
+let transporterReady = false;
+
+const getTransporter = async () => {
+    if (transporter && transporterReady) return transporter;
+
+    const smtpHostname = process.env.SMTP_HOST || 'smtp.gmail.com';
+    const resolvedHost = await resolveHostToIPv4(smtpHostname);
+
+    transporter = nodemailer.createTransport({
+        host: resolvedHost,
         port: parseInt(process.env.SMTP_PORT) || 587,
         secure: false,
         auth: {
             user: process.env.SMTP_USER,
             pass: process.env.SMTP_PASS,
         },
-        // Force IPv4 — Render cannot reach Gmail SMTP over IPv6
-        family: 4,
-        dnsLookup: forcedIPv4Lookup,
-        // Add timeouts to prevent hanging
+        // If we resolved to an IP, set servername for TLS certificate validation
+        tls: resolvedHost !== smtpHostname
+            ? { servername: smtpHostname }
+            : undefined,
+        // Timeouts to prevent hanging
         connectionTimeout: 10000,
         greetingTimeout: 10000,
         socketTimeout: 15000,
     });
+
+    // Verify connection
+    try {
+        await transporter.verify();
+        console.log('✅ SMTP connection verified successfully');
+        transporterReady = true;
+    } catch (err) {
+        console.error('❌ SMTP connection verification failed:', err.message);
+        // Reset so next call retries DNS + connection
+        transporter = null;
+        transporterReady = false;
+        throw err;
+    }
+
+    return transporter;
 };
-
-const transporter = createTransporter();
-
-// Verify SMTP connection on startup
-transporter.verify()
-    .then(() => console.log('✅ SMTP connection verified successfully'))
-    .catch((err) => console.error('❌ SMTP connection failed:', err.message));
 
 const sendOTPEmail = async (email, otp, purpose = 'login') => {
     // Check if SMTP credentials are configured
@@ -91,7 +115,8 @@ const sendOTPEmail = async (email, otp, purpose = 'login') => {
     `;
 
     try {
-        await transporter.sendMail({
+        const mailer = await getTransporter();
+        await mailer.sendMail({
             from: `"Student Project Marketplace" <${process.env.SMTP_USER}>`,
             to: email,
             subject,
@@ -100,6 +125,9 @@ const sendOTPEmail = async (email, otp, purpose = 'login') => {
         console.log(`✅ OTP email sent to ${email} for ${purpose}`);
     } catch (error) {
         console.error(`❌ Failed to send OTP email to ${email}:`, error.message);
+        // Reset transporter so next attempt retries DNS resolution
+        transporter = null;
+        transporterReady = false;
         throw new Error('Failed to send verification email. Please try again later.');
     }
 };
