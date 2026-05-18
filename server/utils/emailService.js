@@ -1,5 +1,10 @@
 const nodemailer = require('nodemailer');
 const { Resend } = require('resend');
+const dns = require('dns');
+
+// Force Node.js to prefer IPv4 over IPv6 for DNS resolution
+// This fixes the ENETUNREACH error on environments like Render that lack IPv6 routing
+dns.setDefaultResultOrder('ipv4first');
 
 // ─── Provider selection ───
 // Use Resend (HTTP API) on deployment, Nodemailer SMTP on localhost
