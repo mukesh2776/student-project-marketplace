@@ -24,9 +24,15 @@ api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            window.location.href = '/login';
+            const publicPaths = ['/login', '/register', '/forgot-password'];
+            const isPublicPage = publicPaths.some(p => window.location.pathname.startsWith(p));
+
+            // Only redirect if we're on a protected page (avoid reload loops on login page)
+            if (!isPublicPage) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                window.location.href = '/login';
+            }
         }
         return Promise.reject(error);
     }

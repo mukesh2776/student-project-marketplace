@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { promoCodesAPI } from '../services/api';
+import { promoCodesAPI, ordersAPI } from '../services/api';
 import Button from '../components/Button';
+import toast from 'react-hot-toast';
 import { HiTrash, HiShoppingCart, HiArrowRight, HiX } from 'react-icons/hi';
 
 const Cart = () => {
@@ -17,6 +18,7 @@ const Cart = () => {
     const [promoError, setPromoError] = useState('');
     const [appliedPromo, setAppliedPromo] = useState(null); // { discountType, discountValue, applicableProjectIds }
     const [discountAmount, setDiscountAmount] = useState(0);
+    const [checkoutLoading, setCheckoutLoading] = useState(false);
 
     const handleApplyPromo = async () => {
         if (!promoCode.trim()) {
@@ -65,13 +67,34 @@ const Cart = () => {
         setPromoError('');
     };
 
-    const handleCheckout = () => {
+    const handleCheckout = async () => {
         if (!isAuthenticated) {
             navigate('/login');
             return;
         }
-        // In real app, redirect to payment gateway
-        alert('Payment integration coming soon!');
+
+        const total = getTotal();
+        const finalTotal = total - discountAmount;
+
+        if (finalTotal <= 0) {
+            // Free checkout — create orders directly
+            setCheckoutLoading(true);
+            try {
+                await ordersAPI.create({
+                    projectIds: items.map(item => item._id)
+                });
+                clearCart();
+                toast.success('Projects added to your orders! 🎉');
+                navigate('/dashboard');
+            } catch (error) {
+                toast.error(error.response?.data?.message || 'Checkout failed. Please try again.');
+            } finally {
+                setCheckoutLoading(false);
+            }
+        } else {
+            // Paid checkout — payment integration placeholder
+            alert('Payment integration coming soon!');
+        }
     };
 
     if (items.length === 0) {
@@ -236,8 +259,8 @@ const Cart = () => {
                                 )}
                             </div>
 
-                            <Button fullWidth onClick={handleCheckout}>
-                                Proceed to Checkout
+                            <Button fullWidth onClick={handleCheckout} loading={checkoutLoading}>
+                                {grandTotal <= 0 ? 'Get for Free' : 'Proceed to Checkout'}
                             </Button>
                             <p className="text-gray-400 text-xs text-center mt-4">
                                 By proceeding, you agree to our Terms of Service

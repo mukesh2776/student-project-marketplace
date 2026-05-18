@@ -41,12 +41,20 @@ const ForgotPassword = () => {
         setErrors({});
         setLoading(true);
         try {
-            await authAPI.forgotPassword({ email });
-            setStep('otp');
-            setResendTimer(60);
-            toast.success('Reset code sent to your email!');
+            const response = await authAPI.forgotPassword({ email });
+            if (response.data.step === 'otp') {
+                setStep('otp');
+                setResendTimer(60);
+                toast.success('Reset code sent to your email!');
+            } else {
+                toast.error('Could not send reset code. Please try again.');
+            }
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Failed to send reset code');
+            const message = error.response?.data?.message || 'Failed to send reset code';
+            toast.error(message);
+            if (error.response?.status === 404) {
+                setErrors({ email: 'No account found with this email' });
+            }
         } finally {
             setLoading(false);
         }

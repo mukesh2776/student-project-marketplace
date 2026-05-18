@@ -251,11 +251,13 @@ exports.forgotPassword = async (req, res, next) => {
             return res.status(400).json({ message: 'Email is required' });
         }
 
+        console.log(`🔑 Forgot password request for: ${email}`);
+
         // Check if user exists
         const user = await User.findOne({ email });
         if (!user) {
-            // Don't reveal whether user exists — still return success
-            return res.json({ email, message: 'If an account with that email exists, an OTP has been sent.' });
+            console.log(`⚠️ No user found with email: ${email}`);
+            return res.status(404).json({ message: 'No account found with this email address.' });
         }
 
         // Delete any existing reset-password OTP for this email
@@ -271,12 +273,15 @@ exports.forgotPassword = async (req, res, next) => {
 
         // Send OTP email
         await sendOTPEmail(email, otp, 'reset-password');
+        console.log(`✅ Forgot-password OTP sent to ${email}`);
 
         res.json({
+            step: 'otp',
             email,
-            message: 'If an account with that email exists, an OTP has been sent.'
+            message: 'OTP sent to your email. Please verify to reset your password.'
         });
     } catch (error) {
+        console.error(`❌ Forgot password error for ${req.body.email}:`, error.message);
         next(error);
     }
 };

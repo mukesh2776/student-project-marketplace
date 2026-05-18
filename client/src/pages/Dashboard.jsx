@@ -35,6 +35,7 @@ const Dashboard = () => {
     const [updatingRole, setUpdatingRole] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [deletingAccount, setDeletingAccount] = useState(false);
+    const [downloadingOrderId, setDownloadingOrderId] = useState(null);
     const [bankingStatus, setBankingStatus] = useState(null);
 
     // Promo code states
@@ -140,6 +141,27 @@ const Dashboard = () => {
         } finally {
             setDeletingAccount(false);
             setShowDeleteModal(false);
+        }
+    };
+
+    const handleDownload = async (orderId) => {
+        setDownloadingOrderId(orderId);
+        try {
+            const res = await ordersAPI.download(orderId);
+            const { downloadUrl, downloadsRemaining } = res.data;
+            if (downloadUrl) {
+                window.open(downloadUrl, '_blank');
+                toast.success(`Download started! ${downloadsRemaining} downloads remaining.`);
+                // Refresh purchases to update download count
+                const purchasesRes = await ordersAPI.getMyPurchases();
+                setPurchases(purchasesRes.data);
+            } else {
+                toast.error('No download file available for this project.');
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Download failed.');
+        } finally {
+            setDownloadingOrderId(null);
         }
     };
 
@@ -325,7 +347,13 @@ const Dashboard = () => {
                                                 <p className="text-gray-900 font-medium truncate">{purchase.project?.title}</p>
                                                 <p className="text-gray-500 text-sm">₹{purchase.amount}</p>
                                             </div>
-                                            <Button variant="ghost" size="sm" leftIcon={<HiDownload className="w-4 h-4" />}>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                leftIcon={<HiDownload className="w-4 h-4" />}
+                                                onClick={() => handleDownload(purchase._id)}
+                                                loading={downloadingOrderId === purchase._id}
+                                            >
                                                 Download
                                             </Button>
                                         </div>
@@ -439,7 +467,13 @@ const Dashboard = () => {
                                         <p className="text-gray-500 text-sm mb-4">
                                             Purchased on {new Date(order.createdAt).toLocaleDateString()}
                                         </p>
-                                        <Button fullWidth size="sm" leftIcon={<HiDownload className="w-4 h-4" />}>
+                                        <Button
+                                            fullWidth
+                                            size="sm"
+                                            leftIcon={<HiDownload className="w-4 h-4" />}
+                                            onClick={() => handleDownload(order._id)}
+                                            loading={downloadingOrderId === order._id}
+                                        >
                                             Download ({order.maxDownloads - order.downloadCount} left)
                                         </Button>
                                     </div>

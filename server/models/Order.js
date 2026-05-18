@@ -22,11 +22,11 @@ const orderSchema = new mongoose.Schema({
     },
     commission: {
         type: Number,
-        required: true
+        default: 0
     },
     sellerEarning: {
         type: Number,
-        required: true
+        default: 0
     },
     paymentStatus: {
         type: String,
@@ -63,8 +63,8 @@ const orderSchema = new mongoose.Schema({
 // Commission rate (10%)
 orderSchema.statics.COMMISSION_RATE = 0.10;
 
-// Calculate commission before saving
-orderSchema.pre('save', function (next) {
+// Calculate commission before validation (runs before save)
+orderSchema.pre('validate', function (next) {
     if (this.isNew) {
         this.commission = this.amount * orderSchema.statics.COMMISSION_RATE;
         this.sellerEarning = this.amount - this.commission;

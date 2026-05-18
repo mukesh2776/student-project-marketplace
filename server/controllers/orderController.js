@@ -3,68 +3,97 @@ const Project = require('../models/Project');
 const User = require('../models/User');
 const crypto = require('crypto');
 
-// @desc    Create new order
+// @desc    Create new order (single or batch, supports free checkout)
 // @route   POST /api/orders
 // @access  Private
 exports.createOrder = async (req, res, next) => {
     try {
-        const { projectId, paymentId, paymentMethod } = req.body;
+        const { projectId, projectIds, paymentId, paymentMethod } = req.body;
 
-        // Get project
-        const project = await Project.findById(projectId);
-        if (!project) {
-            return res.status(404).json({ message: 'Project not found' });
+        // Support both single projectId and batch projectIds
+        const ids = projectIds || (projectId ? [projectId] : []);
+
+        if (ids.length === 0) {
+            return res.status(400).json({ message: 'At least one project ID is required' });
         }
 
-        // Can't buy own project
-        if (project.seller.toString() === req.user._id.toString()) {
-            return res.status(400).json({ message: 'You cannot buy your own project' });
+        // Fetch all projects
+        const projects = await Project.find({ _id: { $in: ids } });
+        if (projects.length === 0) {
+            return res.status(404).json({ message: 'No projects found' });
         }
 
-        // Check if already purchased
-        const existingOrder = await Order.findOne({
-            buyer: req.user._id,
-            project: projectId,
-            paymentStatus: 'completed'
-        });
+        const createdOrders = [];
 
-        if (existingOrder) {
-            return res.status(400).json({ message: 'You have already purchased this project' });
-        }
-
-        // Generate download token
-        const downloadToken = crypto.randomBytes(32).toString('hex');
-
-        // Create order
-        const order = await Order.create({
-            buyer: req.user._id,
-            project: projectId,
-            seller: project.seller,
-            amount: project.price,
-            paymentId,
-            paymentMethod,
-            paymentStatus: 'completed',
-            downloadToken,
-            downloadExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
-        });
-
-        // Update project downloads
-        project.downloads += 1;
-        await project.save();
-
-        // Update seller earnings
-        await User.findByIdAndUpdate(project.seller, {
-            $inc: {
-                totalSales: 1,
-                totalEarnings: order.sellerEarning
+        for (const project of projects) {
+            // Can't buy own project
+            if (project.seller.toString() === req.user._id.toString()) {
+                continue; // skip own projects silently
             }
-        });
 
-        const populatedOrder = await Order.findById(order._id)
+            // Check if already purchased
+            const existingOrder = await Order.findOne({
+                buyer: req.user._id,
+                project: project._id,
+                paymentStatus: 'completed'
+            });
+            if (existingOrder) {
+                continue; // skip already purchased
+            }
+
+            const isFree = project.price === 0;
+
+            // For paid orders, paymentId is required
+            if (!isFree && !paymentId) {
+                continue; // skip — no payment provided for paid project
+            }
+
+            // Generate download token
+            const downloadToken = crypto.randomBytes(32).toString('hex');
+
+            // Create order
+            const order = await Order.create({
+                buyer: req.user._id,
+                project: project._id,
+                seller: project.seller,
+                amount: project.price,
+                paymentId: isFree ? 'free' : paymentId,
+                paymentMethod: isFree ? 'free' : (paymentMethod || ''),
+                paymentStatus: 'completed',
+                downloadToken,
+                downloadExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+            });
+
+            // Update project downloads
+            project.downloads += 1;
+            await project.save();
+
+            // Update seller earnings
+            await User.findByIdAndUpdate(project.seller, {
+                $inc: {
+                    totalSales: 1,
+                    totalEarnings: order.sellerEarning
+                }
+            });
+
+            createdOrders.push(order._id);
+        }
+
+        if (createdOrders.length === 0) {
+            return res.status(400).json({ message: 'No new orders could be created. Projects may already be purchased or are your own.' });
+        }
+
+        // Return populated orders
+        const populatedOrders = await Order.find({ _id: { $in: createdOrders } })
             .populate('project', 'title thumbnail')
             .populate('seller', 'name');
 
-        res.status(201).json(populatedOrder);
+        // Return single order for backward compatibility, array for batch
+        if (!projectIds && projectId) {
+            res.status(201).json(populatedOrders[0]);
+        } else {
+            res.status(201).json(populatedOrders);
+        }
     } catch (error) {
         next(error);
     }
@@ -177,9 +206,17 @@ exports.downloadProject = async (req, res, next) => {
         order.downloadCount += 1;
         await order.save();
 
-        // Return download URL (in production, this would be a signed URL or actual file)
+        // Build the full download URL
+        let downloadUrl = order.project.downloadFile || order.project.githubUrl;
+
+        // If it's a relative path (local upload), prepend the server base URL
+        if (downloadUrl && downloadUrl.startsWith('/')) {
+            const baseUrl = `${req.protocol}://${req.get('host')}`;
+            downloadUrl = `${baseUrl}${downloadUrl}`;
+        }
+
         res.json({
-            downloadUrl: order.project.downloadFile || order.project.githubUrl,
+            downloadUrl,
             downloadsRemaining: order.maxDownloads - order.downloadCount
         });
     } catch (error) {
