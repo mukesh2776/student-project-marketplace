@@ -21,18 +21,27 @@ if (useResend) {
 
 // ─── Nodemailer transporter (SMTP, localhost only) ───
 const createTransporter = () => {
+    // If user explicitly provides a host that isn't gmail, use custom SMTP settings
+    if (process.env.SMTP_HOST && !process.env.SMTP_HOST.includes('gmail.com')) {
+        return nodemailer.createTransport({
+            host: process.env.SMTP_HOST,
+            port: parseInt(process.env.SMTP_PORT) || 587,
+            secure: parseInt(process.env.SMTP_PORT) === 465,
+            auth: {
+                user: process.env.SMTP_USER,
+                pass: process.env.SMTP_PASS,
+            },
+            family: 4,
+        });
+    }
+
+    // Otherwise, use the built-in 'gmail' service which is more reliable in deployment
     return nodemailer.createTransport({
-        host: process.env.SMTP_HOST || 'smtp.gmail.com',
-        port: parseInt(process.env.SMTP_PORT) || 587,
-        secure: false,
+        service: 'gmail',
         auth: {
             user: process.env.SMTP_USER,
             pass: process.env.SMTP_PASS,
-        },
-        family: 4, // Force IPv4 — prevents ENETUNREACH on IPv6-incompatible networks
-        connectionTimeout: 10000,
-        greetingTimeout: 10000,
-        socketTimeout: 15000,
+        }
     });
 };
 
